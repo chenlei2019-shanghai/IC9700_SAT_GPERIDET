@@ -254,10 +254,13 @@ class GpredictHandler(socketserver.BaseRequestHandler):
         self.ui_queue.put(("status", "GPredict connected"))
 
     def _vfo_downlink(self) -> int:
-        return VFO_SUB if self.swap_vfo else VFO_MAIN
+        return VFO_MAIN if self.swap_vfo else VFO_SUB
 
     def _vfo_uplink(self) -> int:
-        return VFO_MAIN if self.swap_vfo else VFO_SUB
+        return VFO_SUB if self.swap_vfo else VFO_MAIN
+
+    def _freq_display_kind(self, vfo: int) -> str:
+        return "main_freq" if vfo == VFO_MAIN else "sub_freq"
 
     def handle(self):
         try:
@@ -300,22 +303,24 @@ class GpredictHandler(socketserver.BaseRequestHandler):
             return
 
         if line == "f":
-            freq = self.radio.get_frequency(self._vfo_downlink())
+            vfo = self._vfo_downlink()
+            freq = self.radio.get_frequency(vfo)
             if freq is not None:
                 self.downlink_hz = freq
                 self.last_downlink_hz = freq
-                self.ui_queue.put(("sub_freq", freq))
+                self.ui_queue.put((self._freq_display_kind(vfo), freq))
                 self._send(str(freq))
             else:
                 self._send("RPRT -1")
             return
 
         if line == "i":
-            freq = self.radio.get_frequency(self._vfo_uplink())
+            vfo = self._vfo_uplink()
+            freq = self.radio.get_frequency(vfo)
             if freq is not None:
                 self.uplink_hz = freq
                 self.last_uplink_hz = freq
-                self.ui_queue.put(("main_freq", freq))
+                self.ui_queue.put((self._freq_display_kind(vfo), freq))
                 self._send(str(freq))
             else:
                 self._send("RPRT -1")
@@ -344,14 +349,16 @@ class GpredictHandler(socketserver.BaseRequestHandler):
         )
 
         if up_changed:
-            self.radio.set_frequency(self._vfo_uplink(), self.uplink_hz)
+            vfo = self._vfo_uplink()
+            self.radio.set_frequency(vfo, self.uplink_hz)
             self.last_uplink_hz = self.uplink_hz
-            self.ui_queue.put(("main_freq", self.uplink_hz))
+            self.ui_queue.put((self._freq_display_kind(vfo), self.uplink_hz))
 
         if dw_changed:
-            self.radio.set_frequency(self._vfo_downlink(), self.downlink_hz)
+            vfo = self._vfo_downlink()
+            self.radio.set_frequency(vfo, self.downlink_hz)
             self.last_downlink_hz = self.downlink_hz
-            self.ui_queue.put(("sub_freq", self.downlink_hz))
+            self.ui_queue.put((self._freq_display_kind(vfo), self.downlink_hz))
 
         self._send("RPRT 0")
 
@@ -555,7 +562,7 @@ class GPredictCIVProxyApp:
         if self.tone_var.get():
             try:
                 tone_hz = float(self.tone_freq_var.get())
-                uplink_vfo = VFO_SUB if not self.swap_var.get() else VFO_MAIN
+                uplink_vfo = VFO_MAIN if not self.swap_var.get() else VFO_SUB
                 self.radio.set_ctcss(uplink_vfo, tone_hz, enable=True)
             except Exception as exc:
                 self._append_log(f"Failed to set CTCSS: {exc}")
