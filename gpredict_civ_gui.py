@@ -254,10 +254,10 @@ class GpredictHandler(socketserver.BaseRequestHandler):
         self.ui_queue.put(("status", "GPredict connected"))
 
     def _vfo_downlink(self) -> int:
-        return VFO_MAIN if self.swap_vfo else VFO_SUB
+        return VFO_SUB if self.swap_vfo else VFO_MAIN
 
     def _vfo_uplink(self) -> int:
-        return VFO_SUB if self.swap_vfo else VFO_MAIN
+        return VFO_MAIN if self.swap_vfo else VFO_SUB
 
     def _freq_display_kind(self, vfo: int) -> str:
         return "main_freq" if vfo == VFO_MAIN else "sub_freq"
@@ -445,14 +445,14 @@ class GPredictCIVProxyApp:
         freq_frame = ttk.LabelFrame(self.root, text="Current Frequencies", padding=10)
         freq_frame.pack(fill=tk.X, padx=10, pady=5)
 
-        self.lbl_main = ttk.Label(freq_frame, text="Main VFO (Uplink / TX):", font=("Consolas", 11))
+        self.lbl_main = ttk.Label(freq_frame, text="Main VFO (Downlink / RX):", font=("Consolas", 11))
         self.lbl_main.grid(row=0, column=0, sticky=tk.W)
         self.main_freq_var = tk.StringVar(value="---.------ MHz")
         ttk.Label(freq_frame, textvariable=self.main_freq_var, font=("Consolas", 14, "bold")).grid(
             row=0, column=1, padx=10, sticky=tk.W
         )
 
-        self.lbl_sub = ttk.Label(freq_frame, text="Sub VFO (Downlink / RX):", font=("Consolas", 11))
+        self.lbl_sub = ttk.Label(freq_frame, text="Sub VFO (Uplink   / TX):", font=("Consolas", 11))
         self.lbl_sub.grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
         self.sub_freq_var = tk.StringVar(value="---.------ MHz")
         ttk.Label(freq_frame, textvariable=self.sub_freq_var, font=("Consolas", 14, "bold")).grid(
@@ -502,11 +502,11 @@ class GPredictCIVProxyApp:
 
     def _update_labels(self):
         if self.swap_var.get():
-            self.lbl_main.config(text="Main VFO (Downlink / RX):")
-            self.lbl_sub.config(text="Sub VFO (Uplink   / TX):")
-        else:
             self.lbl_main.config(text="Main VFO (Uplink / TX):")
             self.lbl_sub.config(text="Sub VFO (Downlink / RX):")
+        else:
+            self.lbl_main.config(text="Main VFO (Downlink / RX):")
+            self.lbl_sub.config(text="Sub VFO (Uplink   / TX):")
 
     def _toggle_service(self):
         if self.running:
@@ -556,13 +556,13 @@ class GPredictCIVProxyApp:
         self._set_status_color("green")
         self._append_log("Listening on 127.0.0.1:4532 for GPredict")
         self._append_log("Mode: ICOM Satellite Mode with auto band adaptation")
-        mapping = "Uplink->Main, Downlink->Sub" if not self.swap_var.get() else "Uplink->Sub, Downlink->Main"
+        mapping = "Uplink->Sub, Downlink->Main" if not self.swap_var.get() else "Uplink->Main, Downlink->Sub"
         self._append_log(f"VFO mapping: {mapping}")
 
         if self.tone_var.get():
             try:
                 tone_hz = float(self.tone_freq_var.get())
-                uplink_vfo = VFO_MAIN if not self.swap_var.get() else VFO_SUB
+                uplink_vfo = VFO_SUB if not self.swap_var.get() else VFO_MAIN
                 self.radio.set_ctcss(uplink_vfo, tone_hz, enable=True)
             except Exception as exc:
                 self._append_log(f"Failed to set CTCSS: {exc}")

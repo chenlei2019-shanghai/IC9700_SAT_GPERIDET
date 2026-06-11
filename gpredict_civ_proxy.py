@@ -13,8 +13,8 @@ GPredict setup:
     - Device 1: localhost:4532 (used for both up/down by this proxy)
     - Device 2: None
     - VFO mapping: ICOM satellite mode default
-        Uplink   (GPredict 'I') -> Main VFO (0xD0)
-        Downlink (GPredict 'F') -> Sub  VFO (0xD1)
+        Uplink   (GPredict 'I') -> Sub  VFO (0xD1)
+        Downlink (GPredict 'F') -> Main VFO (0xD0)
 """
 
 import sys
@@ -177,9 +177,9 @@ class GpredictHandler(socketserver.BaseRequestHandler):
                 self._send("RPRT -1")
             return
 
-        # f: GPredict reads DOWNLINK frequency -> Sub VFO
+        # f: GPredict reads DOWNLINK frequency -> Main VFO
         if line == "f":
-            freq = self.radio.get_frequency(VFO_SUB)
+            freq = self.radio.get_frequency(VFO_MAIN)
             if freq is not None:
                 self.downlink_hz = freq
                 self.last_downlink_hz = freq
@@ -188,9 +188,9 @@ class GpredictHandler(socketserver.BaseRequestHandler):
                 self._send("RPRT -1")
             return
 
-        # i: GPredict reads UPLINK frequency -> Main VFO
+        # i: GPredict reads UPLINK frequency -> Sub VFO
         if line == "i":
-            freq = self.radio.get_frequency(VFO_MAIN)
+            freq = self.radio.get_frequency(VFO_SUB)
             if freq is not None:
                 self.uplink_hz = freq
                 self.last_uplink_hz = freq
@@ -222,11 +222,11 @@ class GpredictHandler(socketserver.BaseRequestHandler):
         )
 
         if up_changed:
-            self.radio.set_frequency(VFO_MAIN, self.uplink_hz)
+            self.radio.set_frequency(VFO_SUB, self.uplink_hz)
             self.last_uplink_hz = self.uplink_hz
 
         if dw_changed:
-            self.radio.set_frequency(VFO_SUB, self.downlink_hz)
+            self.radio.set_frequency(VFO_MAIN, self.downlink_hz)
             self.last_downlink_hz = self.downlink_hz
 
         self._send("RPRT 0")
